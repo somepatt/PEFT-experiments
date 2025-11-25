@@ -53,14 +53,9 @@ class ExperimentRunner:
         )
 
         model = get_peft_model(model, peft_config)
-        
-        def add_labels(example):
-            example["labels"] = example["input_ids"].copy()
-            return example
-            
-        train_data = train_dataset.map(add_labels)
-        eval_data = eval_dataset.map(add_labels)
 
+        self.tokenizer.padding_side = "right"
+        
         training_args = TrainingArguments(
             output_dir=f"{self.output_dir}/{method}",
             per_device_train_batch_size=batch_size,
@@ -71,14 +66,15 @@ class ExperimentRunner:
             fp16=False,
             bf16=True,
             save_strategy="no",
-            report_to="none"
+            report_to="none",
+            remove_unused_columns=True
         )
 
         trainer = Trainer(
             model=model,
             args=training_args,
-            train_dataset=train_data,
-            eval_dataset=eval_data,
+            train_dataset=train_dataset,
+            eval_dataset=eval_dataset,
             data_collator=DataCollatorForLanguageModeling(self.tokenizer, mlm=False),
         )
 
@@ -125,9 +121,11 @@ class ExperimentRunner:
             start_t = time.time()
             generated = out[0]['generated_text'].strip().lower()
             times.append(time.time() - start_t)
+
+            target_clean = target.strip().lower()
             
             pred_yes = generated.startswith("yes")
-            target_yes = (target == "Yes")
+            target_yes = (target_clean == "yes")
             correct += int(pred_yes == target_yes)
             total += 1
 

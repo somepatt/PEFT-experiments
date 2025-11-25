@@ -1,6 +1,6 @@
 from datasets import load_dataset
 
-def format_mrpc(example, test=False):
+def format_mrpc(example, tokenizer, test=False):
     prompt = (
         "You are a helpful assistant that detects paraphrases.\n"
         f"Sentence 1: {example['text1']}\n"
@@ -9,7 +9,7 @@ def format_mrpc(example, test=False):
     )
     label = "Yes" if example["label"] == 1 else "No"
     if not test:
-        return {"input_text": prompt, "target_text": label, "full_text": prompt + label}
+        return {"input_text": prompt, "target_text": label, "full_text": prompt + label + tokenizer.eos_token}
     else:
         return {"input_text": prompt, "target_text": label, "full_text": prompt}
 
@@ -38,9 +38,9 @@ def get_tokenized_dataset(dataset_name, tokenizer, max_length=512):
     
     if dataset_name == "SetFit/mrpc":
         ds = load_dataset(dataset_name)
-        ds['train'] = ds['train'].map(format_mrpc)
-        ds['validation'] = ds['validation'].map(format_mrpc)
-        ds['test'] = ds['test'].map(lambda x: format_mrpc(x, test=True))
+        ds['train'] = ds['train'].map(lambda x: format_mrpc(x, tokenizer))
+        ds['validation'] = ds['validation'].map(lambda x: format_mrpc(x, tokenizer))
+        ds['test'] = ds['test'].map(lambda x: format_mrpc(x, tokenizer, test=True))
     elif dataset_name == "knkarthick/samsum":
         ds = load_dataset(dataset_name)
         ds['train'] = ds['train'].map(lambda x: format_samsum(x, tokenizer))
@@ -51,6 +51,10 @@ def get_tokenized_dataset(dataset_name, tokenizer, max_length=512):
 
     def tokenize_fn(examples):
         tokenizer.padding_side = "right"
+
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
+
         return tokenizer(
             examples["full_text"],
             truncation=True,

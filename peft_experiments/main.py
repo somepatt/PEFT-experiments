@@ -7,7 +7,7 @@ from utils import save_results
 def main():
     parser = argparse.ArgumentParser(description="Run PEFT experiments")
     parser.add_argument("--model_id", type=str, default="Qwen/Qwen3-8B", help="HF Model ID")
-    parser.add_argument("--task", type=str, choices=["mrpc", "samsum", "all"], default="all", help="Task to run")
+    parser.add_argument("--task", type=str, choices=["mrpc", "samsum", "gsm8k", "all"], default="all", help="Task to run")
     parser.add_argument("--batch_size", type=int, default=4, help="Training batch size per device")
     parser.add_argument("--epochs", type=int, default=1, help="Number of training epochs")
     parser.add_argument("--methods", nargs="+", default=["lora", "qlora", "dora"], help="Methods to test")
@@ -71,6 +71,26 @@ def main():
                 **metrics
             }
             save_results(final_report)
+    
+    if args.task in ["gsm8k", "all"]:
+        print("\n\n========== RUNNING GSM8K EXPERIMENT ==========")
+        raw_ds, tokenized_ds = get_tokenized_dataset("openai/gsm8k", runner.tokenizer)
+        
+        train_ds = tokenized_ds["train"].select(range(1000)) 
+        val_ds_tok = tokenized_ds["test"].select(range(500)) 
+        test_ds_tok = tokenized_ds["test"]
+
+        if args.trained:
+             for path in [f'output/{m}/final_adapter' for m in args.methods]:
+                metrics = runner.evaluate_math(path, test_ds_tok)
+                final_report = {"dataset": "GSM8K", "model": args.model_id, "method": path.split('/')[-2], **metrics}
+                save_results(final_report)
+        else:
+            for method in args.methods:
+                res = runner.train(method, train_ds, val_ds_tok, args.batch_size, args.epochs)
+                metrics = runner.evaluate_math(res["adapter_path"], test_ds_tok)
+                final_report = {"dataset": "GSM8K", "model": args.model_id, **res, **metrics}
+                save_results(final_report)
 
 if __name__ == "__main__":
     import os

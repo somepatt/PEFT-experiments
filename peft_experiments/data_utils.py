@@ -19,6 +19,13 @@ def format_samsum(example):
     )
     return {"prompt": prompt, "response": example['summary']}
 
+def format_gsm8k(example):
+    prompt = (
+        f"Question: {example['question']}\n"
+        f"Answer:"
+    )
+    return {"prompt": prompt, "response": example['answer']}
+
 def get_tokenized_dataset(dataset_name, tokenizer, max_length=512):
     
     if dataset_name == "SetFit/mrpc":
@@ -29,6 +36,10 @@ def get_tokenized_dataset(dataset_name, tokenizer, max_length=512):
         ds = load_dataset(dataset_name)
         remove_cols = ds["train"].column_names
         ds = ds.map(format_samsum, load_from_cache_file=False)
+    elif dataset_name == "openai/gsm8k" or dataset_name == "gsm8k":
+        ds = load_dataset("openai/gsm8k", "main")
+        remove_cols = ds["train"].column_names
+        ds = ds.map(format_gsm8k, load_from_cache_file=False)
     else:
         raise ValueError("Unknown dataset")
 

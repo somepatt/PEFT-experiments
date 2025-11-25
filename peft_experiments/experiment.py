@@ -3,6 +3,7 @@ import torch
 import math
 import numpy as np
 import evaluate
+import re
 from transformers import (
     AutoModelForCausalLM, AutoTokenizer, Trainer, TrainingArguments,
     DataCollatorForLanguageModeling, BitsAndBytesConfig, pipeline,
@@ -191,5 +192,68 @@ class ExperimentRunner:
         return {
             "perplexity": perplexity,
             "bleu": bleu_score['score'],
+            "inference_latency_ms": (np.mean(times) / batch_size) * 1000
+        }
+
+    def evaluate_math(self, adapter_path, dataset, batch_size=4):
+        """Для GSM8K: Extract Answer Accuracy + Perplexity"""
+        cleanup()
+        print("Evaluating Math Reasoning (Accuracy & PPL)...")
+        
+        model = AutoModelForCausalLM.from_pretrained(
+            self.model_id, device_map="auto", torch_dtype=torch.bfloat16
+        )
+        model.load_adapter(adapter_path)
+        
+        self.tokenizer.padding_side = "right"
+        def tokenize_for_ppl(examples):
+            full_texts = [
+                i + t for i, t in zip(examples["input_text"], examples["target_text"])
+            ]
+            inputs = self.tokenizer(full_texts, truncation=True, padding="max_length", max_length=512)
+            inputs["labels"] = inputs["input_ids"].copy()
+            return inputs
+            
+        ppl_dataset = dataset.map(tokenize_for_ppl, batched=True)
+        trainer = Trainer(model=model, data_collator=DataCollatorForLanguageModeling(self.tokenizer, mlm=False))
+        eval_res = trainer.evaluate(ppl_dataset)
+        perplexity = math.exp(eval_res['eval_loss'])
+
+        self.tokenizer.padding_side = "left"
+        pipe = pipeline(
+            "text-generation", model=model, tokenizer=self.tokenizer,
+            device_map="auto", return_full_text=False,
+            pad_token_id=self.tokenizer.eos_token_id
+        )
+        
+        correct = 0
+        total = 0
+        times = []
+
+        def extract_answer_number(text):
+            match = re.search(r'####\s*(\-?[0-9\.,]+)', text)
+            if match:
+                return match.group(1).replace(',', '').strip()
+            return None
+
+        for out, target in tqdm(zip(pipe(KeyDataset(dataset, "input_text"), batch_size=batch_size, max_new_tokens=256, do_sample=False), dataset["target_text"]), total=len(dataset)):
+            start_t = time.time()
+            generated = out[0]['generated_text']
+            times.append(time.time() - start_t)
+
+            pred_num = extract_answer_number(generated)
+            target_num = extract_answer_number(target)
+            
+            if target_num is None:
+                nums = re.findall(r'\-?[0-9\.,]+', target)
+                if nums: target_num = nums[-1].replace(',', '').strip()
+
+            if pred_num and target_num and pred_num == target_num:
+                correct += 1
+            total += 1
+
+        return {
+            "perplexity": perplexity,
+            "accuracy": correct / total,
             "inference_latency_ms": (np.mean(times) / batch_size) * 1000
         }

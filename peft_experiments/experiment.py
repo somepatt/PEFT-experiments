@@ -5,7 +5,8 @@ import numpy as np
 import evaluate
 from transformers import (
     AutoModelForCausalLM, AutoTokenizer, Trainer, TrainingArguments,
-    DataCollatorForLanguageModeling, BitsAndBytesConfig, pipeline
+    DataCollatorForLanguageModeling, BitsAndBytesConfig, pipeline,
+    DataCollatorForSeq2Seq
 )
 from transformers.pipelines.pt_utils import KeyDataset
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
@@ -69,13 +70,19 @@ class ExperimentRunner:
             report_to="none",
             remove_unused_columns=True
         )
+        
+        data_collator = DataCollatorForSeq2Seq(
+            tokenizer=self.tokenizer,
+            padding=True,
+            pad_to_multiple_of=8 
+        )
 
         trainer = Trainer(
             model=model,
             args=training_args,
             train_dataset=train_dataset,
             eval_dataset=eval_dataset,
-            data_collator=DataCollatorForLanguageModeling(self.tokenizer, mlm=False),
+            data_collator=data_collator,
         )
 
         with VRAMTracker() as vram:
@@ -83,7 +90,6 @@ class ExperimentRunner:
             trainer.train()
             train_time = time.time() - start_time
 
-        # Сохраняем адаптер
         adapter_path = f"{self.output_dir}/{method}/final_adapter"
         trainer.save_model(adapter_path)
         

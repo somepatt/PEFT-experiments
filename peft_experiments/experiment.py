@@ -140,7 +140,7 @@ class ExperimentRunner:
             "inference_latency_ms": (np.mean(times) / batch_size) * 1000
         }
 
-    def evaluate_generation(self, adapter_path, dataset, batch_size=4, max_samples=100):
+    def evaluate_generation(self, adapter_path, dataset, batch_size=4):
         """Для SAMSum: Perplexity и BLEU"""
         cleanup()
         print("Evaluating Generation (PPL & BLEU)...")
@@ -152,11 +152,16 @@ class ExperimentRunner:
         
         self.tokenizer.padding_side = "right"
         def tokenize_for_ppl(examples):
-            inputs = self.tokenizer(examples["full_text"], truncation=True, padding="max_length", max_length=512)
+
+            full_texts = [
+                i + t for i, t in zip(examples["input_text"], examples["target_text"])
+            ]
+
+            inputs = self.tokenizer(full_texts, truncation=True, padding="max_length", max_length=512)
             inputs["labels"] = inputs["input_ids"].copy()
             return inputs
             
-        ppl_dataset = dataset.select(range(max_samples)).map(tokenize_for_ppl, batched=True)
+        ppl_dataset = dataset.map(tokenize_for_ppl, batched=True)
         
         trainer = Trainer(model=model, data_collator=DataCollatorForLanguageModeling(self.tokenizer, mlm=False))
         eval_res = trainer.evaluate(ppl_dataset)

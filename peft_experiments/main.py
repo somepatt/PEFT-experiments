@@ -73,4 +73,6 @@ def main():
             save_results(final_report)
 
 if __name__ == "__main__":
+    import os
+    os.environ["CUDA_VISIBLE_DEVICES"]="1"
     main()

@@ -1,6 +1,6 @@
 from datasets import load_dataset
 
-def format_mrpc(example):
+def format_mrpc(example, test=False):
     prompt = (
         "You are a helpful assistant that detects paraphrases.\n"
         f"Sentence 1: {example['text1']}\n"
@@ -8,28 +8,44 @@ def format_mrpc(example):
         "Answer with Yes or No.\nAnswer: "
     )
     label = "Yes" if example["label"] == 1 else "No"
-    return {"input_text": prompt, "target_text": label, "full_text": prompt + label}
+    if not test:
+        return {"input_text": prompt, "target_text": label, "full_text": prompt + label}
+    else:
+        return {"input_text": prompt, "target_text": label, "full_text": prompt}
 
-def format_samsum(example, tokenizer):
+
+def format_samsum(example, tokenizer, test=False):
     prompt = (
         f"Summarize this dialogue:\n{example['dialogue']}\n---\n"
         f"Summary:\n"
     )
     target = example['summary']
-    return {
-        "input_text": prompt, 
-        "target_text": target,
-        "full_text": prompt + target + tokenizer.eos_token
-    }
+    if not test:
+        return {
+            "input_text": prompt, 
+            "target_text": target,
+            "full_text": prompt + target + tokenizer.eos_token
+        }
+    else:
+        return {
+            "input_text": prompt, 
+            "target_text": target,
+            "full_text": prompt + tokenizer.eos_token
+            }
+        
 
 def get_tokenized_dataset(dataset_name, tokenizer, max_length=512):
     
     if dataset_name == "SetFit/mrpc":
         ds = load_dataset(dataset_name)
-        ds = ds.map(format_mrpc)
+        ds['train'] = ds['train'].map(format_mrpc)
+        ds['validation'] = ds['validation'].map(format_mrpc)
+        ds['test'] = ds['test'].map(lambda x: format_mrpc(x, test=True))
     elif dataset_name == "knkarthick/samsum":
         ds = load_dataset(dataset_name)
-        ds = ds.map(lambda x: format_samsum(x, tokenizer))
+        ds['train'] = ds['train'].map(lambda x: format_samsum(x, tokenizer))
+        ds['validation'] = ds['validation'].map(lambda x: format_samsum(x, tokenizer))
+        ds['test'] = ds['test'].map(lambda x: format_samsum(x, tokenizer, test=True))
     else:
         raise ValueError("Unknown dataset")
 

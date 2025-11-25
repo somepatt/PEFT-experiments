@@ -35,6 +35,7 @@ def main():
                     "model": args.model_id,
                     **metrics
                 }
+                save_results(final_report)
         else:
             for method in args.methods:
                 res = runner.train(method, train_ds, val_ds_tok, args.batch_size, args.epochs)

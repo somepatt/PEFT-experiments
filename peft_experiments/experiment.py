@@ -180,9 +180,7 @@ class ExperimentRunner:
         references = []
         times = []
         
-        subset = dataset.select(range(max_samples))
-        
-        for out, target in tqdm(zip(pipe(KeyDataset(subset, "input_text"), batch_size=batch_size, max_new_tokens=50, do_sample=False), subset["target_text"]), total=len(subset)):
+        for out, target in tqdm(zip(pipe(KeyDataset(dataset, "input_text"), batch_size=batch_size, max_new_tokens=50, do_sample=False), subset["target_text"]), total=len(subset)):
             start_t = time.time()
             predictions.append(out[0]['generated_text'].strip())
             references.append([target])

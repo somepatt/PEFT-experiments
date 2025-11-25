@@ -8,8 +8,9 @@ def format_mrpc(example):
         f"Sentence 2: {example['text2']}\n"
         "Answer with Yes or No.\nAnswer:"
     )
-    label = " Yes" if example["label"] == 1 else " No"
-    return {"prompt": prompt, "response": label, "label_val": example["label"]}
+    label_val = example["label"]
+    label = " Yes" if label_val == 1 else " No"
+    return {"prompt": prompt, "response": label, "label_val": label_val}
 
 def format_samsum(example):
     prompt = (
@@ -23,11 +24,11 @@ def get_tokenized_dataset(dataset_name, tokenizer, max_length=512):
     if dataset_name == "SetFit/mrpc":
         ds = load_dataset(dataset_name)
         remove_cols = ds["train"].column_names
-        ds = ds.map(format_mrpc)
+        ds = ds.map(format_mrpc, load_from_cache_file=False)
     elif dataset_name == "knkarthick/samsum":
         ds = load_dataset(dataset_name)
         remove_cols = ds["train"].column_names
-        ds = ds.map(format_samsum)
+        ds = ds.map(format_samsum, load_from_cache_file=False)
     else:
         raise ValueError("Unknown dataset")
 
@@ -64,6 +65,6 @@ def get_tokenized_dataset(dataset_name, tokenizer, max_length=512):
             "target_text": example["response"].strip()
         }
 
-    tokenized_ds = ds.map(tokenize_and_mask, remove_columns=remove_cols, batched=False)
+    tokenized_ds = ds.map(tokenize_and_mask, remove_columns=remove_cols, batched=False, load_from_cache_file=False)
     
     return ds, tokenized_ds

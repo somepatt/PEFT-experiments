@@ -22,9 +22,11 @@ def get_tokenized_dataset(dataset_name, tokenizer, max_length=512):
     
     if dataset_name == "SetFit/mrpc":
         ds = load_dataset(dataset_name)
+        remove_cols = ds["train"].column_names
         ds = ds.map(format_mrpc)
     elif dataset_name == "knkarthick/samsum":
         ds = load_dataset(dataset_name)
+        remove_cols = ds["train"].column_names
         ds = ds.map(format_samsum)
     else:
         raise ValueError("Unknown dataset")
@@ -62,7 +64,6 @@ def get_tokenized_dataset(dataset_name, tokenizer, max_length=512):
             "target_text": example["response"].strip()
         }
 
-    remove_cols = ds["train"].column_names
     tokenized_ds = ds.map(tokenize_and_mask, remove_columns=remove_cols, batched=False)
     
     return ds, tokenized_ds

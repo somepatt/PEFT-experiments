@@ -33,7 +33,6 @@ def main():
                 final_report = {
                     "dataset": "MRPC",
                     "model": args.model_id,
-                    **res,
                     **metrics
                 }
         else:

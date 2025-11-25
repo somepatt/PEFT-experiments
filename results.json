@@ -1,0 +1,35 @@
+[
+    {
+        "dataset": "MRPC",
+        "model": "Qwen/Qwen3-8B",
+        "method": "lora",
+        "train_time_sec": 987.427759885788,
+        "peak_vram_gb": 38.13157844543457,
+        "adapter_path": "./output/lora/final_adapter",
+        "accuracy": 0.3333333333333333,
+        "inference_latency_ms": 9.342443709279977e-05,
+        "timestamp": "2025-11-25 15:04:29"
+    },
+    {
+        "dataset": "MRPC",
+        "model": "Qwen/Qwen3-8B",
+        "method": "qlora",
+        "train_time_sec": 1661.1677644252777,
+        "peak_vram_gb": 14.438223838806152,
+        "adapter_path": "./output/qlora/final_adapter",
+        "accuracy": 0.3602941176470588,
+        "inference_latency_ms": 0.00010576902651319317,
+        "timestamp": "2025-11-25 15:32:43"
+    },
+    {
+        "dataset": "MRPC",
+        "model": "Qwen/Qwen3-8B",
+        "method": "dora",
+        "train_time_sec": 2075.6897847652435,
+        "peak_vram_gb": 61.74621105194092,
+        "adapter_path": "./output/dora/final_adapter",
+        "accuracy": 0.31862745098039214,
+        "inference_latency_ms": 9.568882923500211e-05,
+        "timestamp": "2025-11-25 16:07:55"
+    }
+]
